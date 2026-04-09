@@ -25,10 +25,14 @@ import {
   writeGroupsSnapshot,
   writeTasksSnapshot,
 } from './container-runner.js';
+import { runBareMetalAgent } from './bare-metal-runner.js';
 import {
   cleanupOrphans,
   ensureContainerRuntimeRunning,
 } from './container-runtime.js';
+
+const BARE_METAL_MODE = process.env.BARE_METAL_MODE === 'true';
+const runContainerOrHostAgent = BARE_METAL_MODE ? runBareMetalAgent : runContainerAgent;
 import {
   getAllChats,
   getAllRegisteredGroups,
@@ -383,7 +387,7 @@ async function runAgent(
     : undefined;
 
   try {
-    const output = await runContainerAgent(
+    const output = await runContainerOrHostAgent(
       group,
       {
         prompt,
@@ -564,6 +568,10 @@ function recoverPendingMessages(): void {
 }
 
 function ensureContainerSystemRunning(): void {
+  if (BARE_METAL_MODE) {
+    logger.info('Bare-metal mode: skipping Docker runtime check');
+    return;
+  }
   ensureContainerRuntimeRunning();
   cleanupOrphans();
 }
